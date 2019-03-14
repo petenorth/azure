@@ -15,7 +15,7 @@ function Add-AzureIpRestrictionRule
 
         # Name of your Web or API App.
         [Parameter(Mandatory=$true, Position=1)]
-        $AppServiceName, 
+        $AppServiceName
     )
     
     $clientIp = Invoke-WebRequest 'https://api.ipify.org' | Select-Object -ExpandProperty Content
