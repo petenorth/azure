@@ -2,7 +2,7 @@
 .Synopsis
   Adds an Azure Ip restriction rule to an Azure App Service.
 .EXAMPLE
-  Add-AzureIpRestrictionRule -ResourceGroupName $ResourceGroupName -AppServiceName $AppServiceName -rule $rule
+  Add-AzureIpRestrictionRule -ResourceGroupName $ResourceGroupName -AppServiceName $AppServiceName
 #>
 function Add-AzureIpRestrictionRule
 {
@@ -16,11 +16,17 @@ function Add-AzureIpRestrictionRule
         # Name of your Web or API App.
         [Parameter(Mandatory=$true, Position=1)]
         $AppServiceName, 
-
-        # rule to add.
-        [Parameter(Mandatory=$true, Position=2)]
-        [PSCustomObject]$rule 
     )
+    
+    $clientIp = Invoke-WebRequest 'https://api.ipify.org' | Select-Object -ExpandProperty Content
+
+    $rule = [PSCustomObject]@{
+       ipAddress = "$($clientIp)/32"
+        action = "Allow"  
+        priority = 123 
+        name = '{0}_{1}' -f $env:computername, $env:USERNAME 
+        description = "Automatically added ip restriction"
+    }
 
     $ApiVersions = Get-AzureRmResourceProvider -ProviderNamespace Microsoft.Web | 
         Select-Object -ExpandProperty ResourceTypes |
@@ -37,34 +43,3 @@ function Add-AzureIpRestrictionRule
 
     Set-AzureRmResource -ResourceId $WebAppConfig.ResourceId -Properties $WebAppConfig.Properties -ApiVersion $LatestApiVersion -Force    
 }
-
-############################################################
-$SubscriptionId = '' 
-$AppServiceName = ''
-$ResourceGroupName = ''
-
-
-Disable-AzureRmContextAutosave -Scope Process | out-null
-$ctxPath = Join-Path $env:APPDATA 'azure.ctx'
-
-if (-not (Test-Path $ctxPath))
-{
-    Login-AzureRmAccount
-    Save-AzureRmContext -Path $ctxPath -Force
-}
- 
-Import-AzureRmContext -Path $ctxPath | out-null
-Set-AzureRmContext -SubscriptionId $SubscriptionId | Out-Null
-
-
-$clientIp = Invoke-WebRequest 'https://api.ipify.org' | Select-Object -ExpandProperty Content
-
-$rule = [PSCustomObject]@{
-    ipAddress = "$($clientIp)/32"
-    action = "Allow"  
-    priority = 123 
-    name = '{0}_{1}' -f $env:computername, $env:USERNAME 
-    description = "Automatically added ip restriction"
-}
-
-Add-AzureIpRestrictionRule -ResourceGroupName $ResourceGroupName -AppServiceName $AppServiceName -rule $rule
